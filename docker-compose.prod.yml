@@ -1,0 +1,63 @@
+version: '3.8'
+
+# Production Docker Compose configuration
+# This is a reference configuration for deployment
+
+services:
+  fastapi:
+    build: .
+    container_name: ipsi-ai-matching-prod
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - QDRANT_HOST=${QDRANT_HOST}
+      - QDRANT_PORT=${QDRANT_PORT}
+      - QDRANT_API_KEY=${QDRANT_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_EMBEDDING_MODEL=text-embedding-3-large
+      - OPENAI_CHAT_MODEL=gpt-4-turbo-preview
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=HS256
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - API_V1_PREFIX=/api/v1
+    restart: unless-stopped
+    networks:
+      - ipsi-network
+
+  postgres:
+    image: postgres:15
+    container_name: ipsi-postgres-prod
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - ipsi-network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ipsi-qdrant-prod
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+    networks:
+      - ipsi-network
+    environment:
+      - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY}
+
+volumes:
+  postgres_data:
+  qdrant_data:
+
+networks:
+  ipsi-network:
+    driver: bridge
+

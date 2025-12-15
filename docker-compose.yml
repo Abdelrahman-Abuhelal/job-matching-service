@@ -1,0 +1,52 @@
+services:
+  fastapi:
+    build: .
+    container_name: ipsi-ai-matching
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./ipsi_ai.db
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_EMBEDDING_MODEL=text-embedding-3-large
+      - OPENAI_CHAT_MODEL=gpt-4-turbo-preview
+      - AI_INSIGHTS_ENABLED=true
+      - AI_INSIGHTS_MODEL=gpt-4o
+      - AI_INSIGHTS_TOP_N=5
+      - JWT_SECRET_KEY=dev-secret-key-change-in-production
+      - JWT_ALGORITHM=HS256
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
+      - ENVIRONMENT=development
+      - LOG_LEVEL=INFO
+      - API_V1_PREFIX=/api/v1
+    depends_on:
+      - qdrant
+    volumes:
+      - ./app:/app/app
+      - ./scripts:/app/scripts
+      - sqlite_data:/app
+    networks:
+      - ipsi-network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: ipsi-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - ipsi-network
+
+volumes:
+  sqlite_data:
+  qdrant_data:
+
+networks:
+  ipsi-network:
+    driver: bridge
+
+
+
