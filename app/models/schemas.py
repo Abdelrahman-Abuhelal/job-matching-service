@@ -388,5 +388,5 @@ class HealthCheckResponse(BaseModel):
     status: str
     qdrant_connected: bool
     postgres_connected: bool
-    openai_api_available: bool
+    gemini_api_available: bool
     version: str

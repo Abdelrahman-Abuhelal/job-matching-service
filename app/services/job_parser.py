@@ -5,7 +5,7 @@ from typing import Dict, Any
 from sqlalchemy.orm import Session
 import structlog
 
-from app.core.openai_client import parse_job_description
+from app.core.gemini_client import parse_job_description
 from app.core.embeddings import generate_job_embedding
 from app.core.qdrant_client import create_collection, upsert_vector
 from app.models.database import Company, JobPosting
@@ -13,7 +13,7 @@ from app.models.schemas import StructuredJobData
 from app.core.exceptions import (
     BusinessLogicException,
     ErrorCode,
-    OpenAIException,
+    AIException,
     QdrantException
 )
 
@@ -32,8 +32,8 @@ async def parse_and_store_job(
     
     Args:
         db: Database session
-        external_job_id: Job ID from IPSI system
-        external_company_id: Company ID from IPSI system
+        external_job_id: Job ID from external system
+        external_company_id: Company ID from external system
         company_name: Company name
         raw_description: Raw job description text
         
@@ -42,7 +42,7 @@ async def parse_and_store_job(
         
     Raises:
         BusinessLogicException: If job parsing or storage fails
-        OpenAIException: If OpenAI API fails
+        AIException: If AI API fails
         QdrantException: If Qdrant operations fail
     """
     logger.info("job_parser.parse_and_store.start", 
@@ -133,7 +133,7 @@ async def parse_and_store_job(
             "qdrant_point_id": qdrant_point_id
         }
         
-    except (OpenAIException, QdrantException) as e:
+    except (AIException, QdrantException) as e:
         logger.error("job_parser.external_service_error", 
                     job_id=external_job_id, error=str(e))
         db.rollback()
@@ -148,6 +148,3 @@ async def parse_and_store_job(
             f"Failed to parse and store job: {external_job_id}",
             details={"job_id": external_job_id, "error": str(e)}
         ) from e
-
-
-

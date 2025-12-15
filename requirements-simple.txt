@@ -11,8 +11,8 @@ alembic==1.12.0
 # Vector Database
 qdrant-client==1.6.4
 
-# OpenAI
-openai>=1.12.0
+# Google Gemini AI
+google-generativeai>=0.8.0
 
 # Async and Retry
 tenacity==8.2.0

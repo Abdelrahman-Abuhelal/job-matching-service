@@ -1,7 +1,7 @@
 """Embedding generation utilities."""
 
 from typing import List, Dict, Any
-from app.core.openai_client import generate_embedding
+from app.core.gemini_client import generate_embedding
 
 
 async def create_job_embedding_text(structured_data: Dict[str, Any]) -> str:
@@ -122,6 +122,3 @@ async def generate_student_embedding(profile_data: Dict[str, Any]) -> List[float
     """
     text = await create_student_embedding_text(profile_data)
     return await generate_embedding(text)
-
-
-

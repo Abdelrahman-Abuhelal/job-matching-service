@@ -11,7 +11,6 @@ import structlog
 from app.config import settings
 from app.api.v1 import health, jobs, students, matching
 from app.core.exceptions import APIException
-from app.core.openai_client import get_openai_service
 from app.core.qdrant_client import get_qdrant_service
 from app import __version__
 
@@ -64,9 +63,6 @@ async def lifespan(app: FastAPI):
     logger.info("application.shutting_down")
     
     # Close connections
-    openai_service = await get_openai_service()
-    await openai_service.close()
-    
     qdrant_service = get_qdrant_service()
     qdrant_service.close()
     
@@ -74,8 +70,8 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(
-    title="IPSI AI Matching Service",
-    description="AI-powered student-internship matching microservice for the IPSI platform",
+    title="TalentMatch AI",
+    description="AI-powered talent matching service using semantic search and Gemini AI",
     version=__version__,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -142,11 +138,8 @@ app.include_router(matching.router, prefix=settings.API_V1_PREFIX, tags=["Matchi
 async def root():
     """Root endpoint."""
     return {
-        "service": "IPSI AI Matching Service",
+        "service": "TalentMatch AI",
         "version": __version__,
         "status": "running",
         "docs": "/docs"
     }
-
-
-

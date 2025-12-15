@@ -11,7 +11,7 @@ from app.models.database import StudentProfile
 from app.core.exceptions import (
     BusinessLogicException,
     ErrorCode,
-    OpenAIException,
+    AIException,
     QdrantException
 )
 
@@ -124,7 +124,7 @@ async def create_or_update_student_embedding(
             "qdrant_point_id": qdrant_point_id
         }
         
-    except (OpenAIException, QdrantException) as e:
+    except (AIException, QdrantException) as e:
         logger.error("embedding_service.external_service_error", 
                     student_id=external_student_id, error=str(e))
         db.rollback()
