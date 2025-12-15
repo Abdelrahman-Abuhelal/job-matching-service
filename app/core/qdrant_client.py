@@ -68,13 +68,13 @@ def get_qdrant_service() -> QdrantService:
     wait=wait_exponential(multiplier=1, min=2, max=8),
     before_sleep=before_sleep_log(logger, "WARNING")
 )
-async def create_collection(collection_name: str, vector_size: int = 1536) -> bool:
+async def create_collection(collection_name: str, vector_size: int = 768) -> bool:
     """
     Create a new Qdrant collection with retry logic.
     
     Args:
         collection_name: Name of the collection
-        vector_size: Dimension of vectors (default 1536 for text-embedding-3-large)
+        vector_size: Dimension of vectors (default 768 for Gemini text-embedding-004)
         
     Returns:
         True if successful

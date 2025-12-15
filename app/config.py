@@ -8,27 +8,27 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
     # Database
-    DATABASE_URL: str = "postgresql://user:password@localhost:5432/ipsi_ai"
+    DATABASE_URL: str = "sqlite:///./talentmatch.db"
     
     # Qdrant
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6333
     QDRANT_API_KEY: str = ""
     
-    # OpenAI
-    OPENAI_API_KEY: str
-    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-large"
-    OPENAI_CHAT_MODEL: str = "gpt-4-turbo-preview"
+    # Gemini AI
+    GEMINI_API_KEY: str
+    GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
+    GEMINI_CHAT_MODEL: str = "gemini-2.5-flash-lite"
+    EMBEDDING_DIMENSIONS: int = 768  # Gemini text-embedding-004 dimensions
     
     # AI Insights Configuration
     AI_INSIGHTS_ENABLED: bool = True
-    AI_INSIGHTS_MODEL: str = "gpt-4o"  # GPT-4o (latest model) for high-quality insights
     AI_INSIGHTS_TOP_N: int = 5  # Generate AI insights for top N matches
     
     # Security
     JWT_SECRET_KEY: str = "change-this-secret-key"
     JWT_ALGORITHM: str = "HS256"
-    ALLOWED_ORIGINS: str = "http://localhost:3000"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8501"
     
     # Service
     ENVIRONMENT: str = "development"
@@ -47,6 +47,3 @@ class Settings(BaseSettings):
 
 # Global settings instance
 settings = Settings()
-
-
-

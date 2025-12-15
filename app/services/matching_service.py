@@ -20,7 +20,7 @@ from app.core.exceptions import (
     BusinessLogicException,
     ErrorCode,
     QdrantException,
-    OpenAIException
+    AIException
 )
 
 logger = structlog.get_logger()
@@ -452,7 +452,7 @@ async def find_students_for_job(
             "returned_count": len(matches)
         }
 
-    except (OpenAIException, QdrantException) as e:
+    except (AIException, QdrantException) as e:
         logger.error(
             "matching.students_for_job.external_service_error",
             job_id=external_job_id,
@@ -732,7 +732,7 @@ async def find_jobs_for_student(
             "matches": matches
         }
 
-    except (OpenAIException, QdrantException) as e:
+    except (AIException, QdrantException) as e:
         logger.error(
             "matching.jobs_for_student.external_service_error",
             student_id=external_student_id,

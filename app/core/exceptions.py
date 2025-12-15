@@ -1,4 +1,4 @@
-"""Custom exceptions for the IPSI AI Matching Service."""
+"""Custom exceptions for the TalentMatch AI Service."""
 
 from enum import Enum
 from typing import Dict, Any, Optional
@@ -14,9 +14,9 @@ class ErrorCode(str, Enum):
     AUTHENTICATION_ERROR = "AUTHENTICATION_ERROR"
     
     # External service errors
-    OPENAI_ERROR = "OPENAI_ERROR"
-    OPENAI_RATE_LIMIT = "OPENAI_RATE_LIMIT"
-    OPENAI_TIMEOUT = "OPENAI_TIMEOUT"
+    AI_ERROR = "AI_ERROR"
+    AI_RATE_LIMIT = "AI_RATE_LIMIT"
+    AI_TIMEOUT = "AI_TIMEOUT"
     
     QDRANT_ERROR = "QDRANT_ERROR"
     QDRANT_TIMEOUT = "QDRANT_TIMEOUT"
@@ -95,16 +95,20 @@ class ExternalServiceException(APIException):
         )
 
 
-class OpenAIException(ExternalServiceException):
-    """Exception for OpenAI API errors."""
+class AIException(ExternalServiceException):
+    """Exception for AI API errors (Gemini)."""
     
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
-            service="openai",
-            code=ErrorCode.OPENAI_ERROR,
+            service="gemini",
+            code=ErrorCode.AI_ERROR,
             message=message,
             details=details
         )
+
+
+# Alias for backward compatibility
+OpenAIException = AIException
 
 
 class QdrantException(ExternalServiceException):
