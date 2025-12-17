@@ -329,6 +329,42 @@ async def delete_vector(collection_name: str, point_id: str) -> bool:
         ) from e
 
 
+async def delete_collection(collection_name: str) -> bool:
+    """
+    Delete a Qdrant collection.
+    
+    Args:
+        collection_name: Name of the collection to delete
+        
+    Returns:
+        True if successful
+        
+    Raises:
+        QdrantException: If collection deletion fails
+    """
+    try:
+        service = get_qdrant_service()
+        client = service.get_client()
+        
+        logger.info("qdrant.collection.delete_request", collection=collection_name)
+        
+        # Run synchronous operation in executor
+        loop = asyncio.get_event_loop()
+        delete_func = partial(client.delete_collection, collection_name=collection_name)
+        await loop.run_in_executor(None, delete_func)
+        
+        logger.info("qdrant.collection.deleted", collection=collection_name)
+        return True
+        
+    except Exception as e:
+        logger.error("qdrant.collection.delete_failed", 
+                    collection=collection_name, error=str(e))
+        raise QdrantException(
+            message=f"Failed to delete collection: {collection_name}",
+            details={"collection": collection_name, "error": str(e)}
+        ) from e
+
+
 async def collection_exists(collection_name: str) -> bool:
     """
     Check if a collection exists.

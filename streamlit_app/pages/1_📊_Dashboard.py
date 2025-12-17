@@ -1,16 +1,17 @@
-"""Dashboard page - System overview and health status."""
+"""Dashboard page - System overview and configuration."""
 
 import streamlit as st
 import asyncio
+import os
 from utils.api_client import health_check
 
-st.set_page_config(page_title="Dashboard - TalentMatch AI", page_icon="📊", layout="wide")
+st.set_page_config(page_title="System Status — TalentMatch AI", page_icon="📊", layout="wide")
 
-st.title("📊 Dashboard")
-st.markdown("System overview and health monitoring")
+st.title("System Status")
+st.markdown("Monitor system health and configure API settings.")
 
 # Health Status Section
-st.markdown("### 🏥 System Health")
+st.markdown("### Service Health")
 
 async def check_health():
     return await health_check()
@@ -20,116 +21,139 @@ try:
     health_data = asyncio.run(check_health())
     
     if health_data.get("status") == "healthy":
-        st.success("✅ All systems operational")
+        st.success("All services are operational.")
     elif health_data.get("status") == "degraded":
-        st.warning("⚠️ System running in degraded mode")
+        st.warning("System is running in degraded mode. Some features may be unavailable.")
     else:
-        st.error(f"❌ System error: {health_data.get('error', 'Unknown')}")
+        st.error(f"System error: {health_data.get('error', 'Unknown')}")
     
     # Health metrics
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        status = "🟢" if health_data.get("postgres_connected", False) else "🔴"
-        st.metric("Database", f"{status} {'Connected' if health_data.get('postgres_connected', False) else 'Disconnected'}")
+        connected = health_data.get("postgres_connected", False)
+        st.metric("Database", "Connected" if connected else "Disconnected")
     
     with col2:
-        status = "🟢" if health_data.get("qdrant_connected", False) else "🔴"
-        st.metric("Qdrant", f"{status} {'Connected' if health_data.get('qdrant_connected', False) else 'Disconnected'}")
+        connected = health_data.get("qdrant_connected", False)
+        st.metric("Vector Store", "Connected" if connected else "Disconnected")
     
     with col3:
-        status = "🟢" if health_data.get("gemini_api_available", False) else "🔴"
-        st.metric("Gemini AI", f"{status} {'Available' if health_data.get('gemini_api_available', False) else 'Unavailable'}")
+        available = health_data.get("gemini_api_available", False)
+        st.metric("AI Service", "Available" if available else "Unavailable")
     
     with col4:
         st.metric("Version", health_data.get("version", "Unknown"))
 
 except Exception as e:
-    st.error(f"Could not connect to API: {str(e)}")
-    st.info("Make sure the FastAPI backend is running on http://localhost:8000")
+    error_msg = str(e)
+    st.error(f"Could not connect to API: {error_msg}")
+    
+    if "Connection refused" in error_msg or "connect" in error_msg.lower():
+        st.info("""
+**Troubleshooting:**
+1. Ensure the backend is running: `docker-compose up`
+2. Check API logs: `docker-compose logs fastapi`
+3. If running in Docker, API URL should be: `http://fastapi:8000/api/v1`
+4. If running locally, use: `http://localhost:8000/api/v1`
+        """)
+    else:
+        st.info("Check the API configuration below and ensure all services are running.")
 
 st.markdown("---")
 
-# System Statistics
-st.markdown("### 📈 System Statistics")
+# Data Statistics
+st.markdown("### Data Overview")
 
 col1, col2, col3 = st.columns(3)
 
+# Calculate counts including session-added items
+sample_jobs = 5
+sample_candidates = 8
+session_jobs = len(st.session_state.get("jobs", []))
+session_candidates = len(st.session_state.get("candidates", []))
+
 with col1:
-    st.markdown("""
-    <div style="background: linear-gradient(145deg, #1e3a5f, #2d5a87); padding: 1.5rem; border-radius: 12px; text-align: center;">
-        <h2 style="color: #ff6b6b; margin: 0;">5</h2>
-        <p style="color: #b0c4de; margin: 0.5rem 0 0 0;">Jobs in System</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.metric("Job Postings", f"{sample_jobs + session_jobs}", 
+              delta=f"+{session_jobs} this session" if session_jobs > 0 else None)
 
 with col2:
-    st.markdown("""
-    <div style="background: linear-gradient(145deg, #1e3a5f, #2d5a87); padding: 1.5rem; border-radius: 12px; text-align: center;">
-        <h2 style="color: #ff6b6b; margin: 0;">8</h2>
-        <p style="color: #b0c4de; margin: 0.5rem 0 0 0;">Candidates</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.metric("Candidates", f"{sample_candidates + session_candidates}",
+              delta=f"+{session_candidates} this session" if session_candidates > 0 else None)
 
 with col3:
-    st.markdown("""
-    <div style="background: linear-gradient(145deg, #1e3a5f, #2d5a87); padding: 1.5rem; border-radius: 12px; text-align: center;">
-        <h2 style="color: #ff6b6b; margin: 0;">768</h2>
-        <p style="color: #b0c4de; margin: 0.5rem 0 0 0;">Vector Dimensions</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.metric("Embedding Dimensions", "768")
+
+st.caption("Sample data (5 jobs, 8 candidates) is pre-loaded for testing.")
 
 st.markdown("---")
 
-# Configuration
-st.markdown("### ⚙️ Configuration")
+# API Configuration
+st.markdown("### API Configuration")
 
-with st.expander("API Configuration"):
-    api_url = st.text_input(
-        "API Base URL",
-        value=st.session_state.get("api_url", "http://localhost:8000/api/v1"),
-        help="The base URL of the TalentMatch AI backend"
-    )
+with st.expander("Connection Settings", expanded=True):
+    env_api_url = os.getenv("API_URL")
+    
+    if env_api_url:
+        st.info(f"**Running in Docker:** API URL is set to `{env_api_url}` from environment.")
+        st.text_input(
+            "API Base URL",
+            value=env_api_url,
+            disabled=True,
+            help="This is configured automatically in Docker"
+        )
+        # Clear any cached localhost URL
+        if "api_url" in st.session_state and "localhost" in st.session_state.get("api_url", ""):
+            del st.session_state["api_url"]
+    else:
+        api_url = st.text_input(
+            "API Base URL",
+            value=st.session_state.get("api_url", "http://localhost:8000/api/v1"),
+            help="The base URL of the TalentMatch AI backend"
+        )
+        if st.button("Save API URL"):
+            st.session_state["api_url"] = api_url
+            st.success("API URL saved.")
+    
+    st.markdown("---")
     
     jwt_token = st.text_input(
-        "JWT Token",
+        "API Token",
         value=st.session_state.get("jwt_token", ""),
         type="password",
-        help="JWT authentication token for API access"
+        help="JWT token for API authentication. Required for matching and data operations."
     )
     
-    if st.button("Save Configuration"):
-        st.session_state["api_url"] = api_url
+    if st.button("Save Token", type="primary"):
         st.session_state["jwt_token"] = jwt_token
-        st.success("Configuration saved!")
+        st.success("Token saved. You can now use the Matching and data pages.")
 
-# Technology Info
 st.markdown("---")
-st.markdown("### 🛠️ Technology Stack")
+
+# Technology Stack
+st.markdown("### Technology Stack")
 
 tech_col1, tech_col2 = st.columns(2)
 
 with tech_col1:
     st.markdown("""
-    **AI & ML:**
-    - Google Gemini 2.5 Flash-Lite
-    - text-embedding-004 (768 dimensions)
-    - Semantic similarity matching
-    
-    **Backend:**
-    - FastAPI (Python 3.11)
-    - SQLAlchemy ORM
-    - Pydantic validation
+**AI & Matching:**
+- Google Gemini 2.5 Flash-Lite (parsing)
+- text-embedding-004 (768 dimensions)
+- Cosine similarity matching
+
+**Backend:**
+- FastAPI (Python 3.11)
+- SQLAlchemy ORM
+- Pydantic validation
     """)
 
 with tech_col2:
     st.markdown("""
-    **Databases:**
-    - SQLite (demo) / PostgreSQL (production)
-    - Qdrant vector database
-    
-    **Frontend:**
-    - Streamlit
-    - Interactive visualizations
-    """)
+**Data Storage:**
+- SQLite (demo) / PostgreSQL (production)
+- Qdrant vector database
 
+**Frontend:**
+- Streamlit
+    """)

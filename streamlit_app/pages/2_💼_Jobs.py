@@ -4,22 +4,163 @@ import streamlit as st
 import asyncio
 import uuid
 from utils.api_client import parse_job
+import pandas as pd
 
-st.set_page_config(page_title="Jobs - TalentMatch AI", page_icon="💼", layout="wide")
+from utils.import_helpers import JOBS_SCHEMA, validate_columns
 
-st.title("💼 Job Management")
-st.markdown("Add and manage job postings with AI-powered parsing")
+st.set_page_config(page_title="Job Postings — TalentMatch AI", page_icon="💼", layout="wide")
+
+st.title("Job Postings")
+st.markdown("Add and manage job postings. The AI extracts structured data from job descriptions.")
 
 # Initialize session state for jobs
 if "jobs" not in st.session_state:
     st.session_state.jobs = []
 
 # Tabs for different actions
-tab1, tab2 = st.tabs(["➕ Add New Job", "📋 View Jobs"])
+tab_view, tab_import, tab_add = st.tabs(["View Jobs", "Import from File", "Add Job"])
 
-with tab1:
-    st.markdown("### Add a New Job Posting")
-    st.markdown("Enter a job description and our AI will automatically extract structured data.")
+with tab_view:
+    st.markdown("### Jobs in System")
+
+    # Sample data section
+    st.markdown("#### Sample Data")
+    st.caption("Pre-loaded for testing. You can use these in the Matching page.")
+
+    sample_jobs = [
+        {"job_id": "job_001", "company": "Tech Corp", "title": "Python Backend Developer Internship"},
+        {"job_id": "job_002", "company": "Data Solutions Inc", "title": "Data Science Internship"},
+        {"job_id": "job_003", "company": "Creative Web Studio", "title": "Full-Stack Developer Internship (React + Node.js)"},
+        {"job_id": "job_004", "company": "FinTech Solutions", "title": "Junior Software Engineer - Banking Platform"},
+        {"job_id": "job_005", "company": "AI Research Lab", "title": "Machine Learning Research Intern"},
+    ]
+
+    for job in sample_jobs:
+        with st.container():
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                st.markdown(f"**{job['title']}**")
+                st.caption(f"{job['company']}")
+            with col2:
+                st.code(job['job_id'], language=None)
+            st.markdown("---")
+
+    # User-added jobs
+    if st.session_state.jobs:
+        st.markdown("#### Your Jobs")
+        st.caption("Jobs you added this session.")
+        for job in st.session_state.jobs[-10:][::-1]:
+            with st.container():
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    title = job.get("data", {}).get("structured_data", {}).get("title", "Untitled")
+                    st.markdown(f"**{title}**")
+                    st.caption(job['company_name'])
+                with col2:
+                    st.code(job['job_id'], language=None)
+                st.markdown("---")
+
+
+with tab_import:
+    st.markdown("### Import Jobs from CSV or Excel")
+    st.caption(
+        "Each row triggers AI parsing and embedding generation. "
+        "Large imports may take time or hit API rate limits."
+    )
+
+    template_df = pd.DataFrame(
+        [
+            {
+                "external_job_id": "job_1001",
+                "external_company_id": "company_acme",
+                "company_name": "Acme Corp",
+                "raw_description": "Paste full job description text here...",
+            }
+        ]
+    )
+    st.download_button(
+        "Download CSV Template",
+        data=template_df.to_csv(index=False).encode("utf-8"),
+        file_name="jobs_import_template.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+
+    upload = st.file_uploader(
+        "Upload CSV or Excel file",
+        type=["csv", "xlsx", "xls"],
+        help=f"Required columns: {', '.join(JOBS_SCHEMA.required_columns)}",
+    )
+
+    if upload is not None:
+        try:
+            if upload.name.lower().endswith(".csv"):
+                df = pd.read_csv(upload)
+            else:
+                df = pd.read_excel(upload)
+        except Exception as e:
+            st.error(f"Could not read file: {e}")
+            df = None
+
+        if df is not None:
+            ok, missing, extra = validate_columns(df.columns, JOBS_SCHEMA)
+            if not ok:
+                st.error(f"Missing required columns: {', '.join(missing)}")
+            if extra:
+                st.warning(f"Extra columns will be ignored: {', '.join(extra)}")
+
+            if ok:
+                st.dataframe(df.head(25), use_container_width=True)
+                if st.button("Import Jobs", use_container_width=True, type="primary"):
+                    progress = st.progress(0)
+                    results = {"success": 0, "failed": 0}
+                    status_text = st.empty()
+                    
+                    for i, row in enumerate(df.to_dict(orient="records")):
+                        progress.progress((i + 1) / max(len(df), 1))
+                        status_text.text(f"Processing row {i + 1} of {len(df)}...")
+                        
+                        external_job_id = str(row.get("external_job_id", "")).strip()
+                        external_company_id = str(row.get("external_company_id", "")).strip()
+                        company_name = str(row.get("company_name", "")).strip()
+                        raw_description = str(row.get("raw_description", "")).strip()
+
+                        if not (external_job_id and external_company_id and company_name and raw_description):
+                            results["failed"] += 1
+                            continue
+
+                        async def do_parse():
+                            return await parse_job(
+                                external_job_id,
+                                external_company_id,
+                                company_name,
+                                raw_description,
+                            )
+
+                        r = asyncio.run(do_parse())
+                        if r.get("success"):
+                            results["success"] += 1
+                            st.session_state.jobs.append(
+                                {
+                                    "job_id": external_job_id,
+                                    "company_id": external_company_id,
+                                    "company_name": company_name,
+                                    "data": r.get("data", {}),
+                                }
+                            )
+                        else:
+                            results["failed"] += 1
+
+                    status_text.empty()
+                    st.success(
+                        f"**Import completed.** {results['success']} jobs added successfully, "
+                        f"{results['failed']} failed."
+                    )
+
+
+with tab_add:
+    st.markdown("### Add a New Job")
+    st.caption("Enter a job description. The AI will extract title, skills, requirements, and other structured data.")
     
     with st.form("add_job_form"):
         col1, col2 = st.columns(2)
@@ -31,16 +172,16 @@ with tab1:
             )
             
             job_id = st.text_input(
-                "Job ID (Optional)",
+                "Job ID",
                 value=f"job_{uuid.uuid4().hex[:8]}",
-                help="Unique identifier for the job"
+                help="A unique identifier for this job"
             )
         
         with col2:
             company_id = st.text_input(
-                "Company ID (Optional)",
+                "Company ID",
                 value=f"company_{uuid.uuid4().hex[:8]}",
-                help="Unique identifier for the company"
+                help="A unique identifier for the company"
             )
         
         raw_description = st.text_area(
@@ -64,22 +205,17 @@ Nice to have:
 
 Location: Remote (US timezone)
 Salary: $120,000 - $160,000
-
-Benefits:
-- Health insurance
-- 401(k) matching
-- Unlimited PTO
 """,
-            help="Enter the full job description - AI will extract structured data"
+            help="The AI will extract structured data from this description"
         )
         
-        submitted = st.form_submit_button("🚀 Parse & Save Job", use_container_width=True)
+        submitted = st.form_submit_button("Add Job", use_container_width=True, type="primary")
         
         if submitted:
             if not company_name or not raw_description:
-                st.error("Please fill in company name and job description")
+                st.error("Please provide both company name and job description.")
             else:
-                with st.spinner("🤖 AI is parsing your job description..."):
+                with st.spinner("Parsing job description..."):
                     async def do_parse():
                         return await parse_job(
                             job_id,
@@ -91,7 +227,10 @@ Benefits:
                     result = asyncio.run(do_parse())
                     
                     if result["success"]:
-                        st.success("✅ Job parsed and saved successfully!")
+                        st.success(
+                            f"**Job added successfully.** "
+                            f"You can now use `{job_id}` in the Matching page."
+                        )
                         
                         # Store in session state
                         st.session_state.jobs.append({
@@ -102,7 +241,7 @@ Benefits:
                         })
                         
                         # Display parsed data
-                        st.markdown("#### 📝 Extracted Data:")
+                        st.markdown("#### Extracted Data")
                         
                         data = result["data"].get("structured_data", {})
                         
@@ -120,78 +259,15 @@ Benefits:
                         skills = data.get("required_skills", [])
                         if skills:
                             st.markdown(" ".join([f"`{s}`" for s in skills[:10]]))
+                        else:
+                            st.caption("None extracted")
                         
                         st.markdown("**Preferred Skills:**")
                         pref_skills = data.get("preferred_skills", [])
                         if pref_skills:
                             st.markdown(" ".join([f"`{s}`" for s in pref_skills[:5]]))
+                        else:
+                            st.caption("None extracted")
                         
                     else:
-                        st.error(f"❌ Failed to parse job: {result['error']}")
-
-with tab2:
-    st.markdown("### Existing Jobs")
-    
-    # Demo jobs
-    demo_jobs = [
-        {
-            "job_id": "job_001",
-            "company": "TechCorp",
-            "title": "Senior Python Developer",
-            "location": "Remote",
-            "skills": ["Python", "FastAPI", "PostgreSQL", "Docker"]
-        },
-        {
-            "job_id": "job_002",
-            "company": "DataFlow Inc",
-            "title": "Data Engineer",
-            "location": "Berlin, Germany",
-            "skills": ["Python", "Spark", "AWS", "Airflow"]
-        },
-        {
-            "job_id": "job_003",
-            "company": "AI Solutions",
-            "title": "Machine Learning Engineer",
-            "location": "San Francisco, CA",
-            "skills": ["Python", "TensorFlow", "PyTorch", "ML Ops"]
-        },
-        {
-            "job_id": "job_004",
-            "company": "CloudNative Co",
-            "title": "DevOps Engineer",
-            "location": "Remote",
-            "skills": ["Kubernetes", "Terraform", "AWS", "CI/CD"]
-        },
-        {
-            "job_id": "job_005",
-            "company": "FinTech Pro",
-            "title": "Backend Developer",
-            "location": "London, UK",
-            "skills": ["Java", "Spring Boot", "PostgreSQL", "Kafka"]
-        }
-    ]
-    
-    # Display as cards
-    for job in demo_jobs:
-        with st.container():
-            col1, col2, col3 = st.columns([3, 2, 1])
-            
-            with col1:
-                st.markdown(f"**{job['title']}**")
-                st.markdown(f"🏢 {job['company']} | 📍 {job['location']}")
-            
-            with col2:
-                st.markdown("**Skills:**")
-                st.markdown(" ".join([f"`{s}`" for s in job['skills'][:4]]))
-            
-            with col3:
-                st.markdown(f"ID: `{job['job_id']}`")
-            
-            st.markdown("---")
-    
-    # Show newly added jobs from session
-    if st.session_state.jobs:
-        st.markdown("### Recently Added Jobs")
-        for job in st.session_state.jobs:
-            st.info(f"**{job['company_name']}** - Job ID: `{job['job_id']}`")
-
+                        st.error(f"Could not parse job: {result['error']}")

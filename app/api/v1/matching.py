@@ -1,14 +1,20 @@
 """Matching endpoints for finding students and jobs."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.models.schemas import (
     StudentsForJobRequest,
     StudentsForJobResponse,
     JobsForStudentRequest,
-    JobsForStudentResponse
+    JobsForStudentResponse,
+    MatchHistoryResponse,
+    MatchHistorySession,
+    MatchHistoryEntry
 )
+from app.models.database import MatchHistory, JobPosting, StudentProfile
 from app.dependencies import get_database, get_current_user
 from app.services.matching_service import find_students_for_job, find_jobs_for_student
 
@@ -102,6 +108,99 @@ async def get_jobs_for_student(
     )
 
     return JobsForStudentResponse(**result)
+
+
+@router.get("/matching/history", response_model=MatchHistoryResponse)
+async def get_match_history(
+    job_id: Optional[str] = Query(None, description="Filter by external job ID"),
+    limit: int = Query(20, ge=1, le=100, description="Maximum number of sessions to return"),
+    db: Session = Depends(get_database),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Retrieve match history for past matching sessions.
+    
+    Returns matching sessions grouped by job and timestamp, allowing HR to
+    revisit and compare past matching results.
+    
+    Args:
+        job_id: Optional filter by external job ID
+        limit: Maximum sessions to return (default 20)
+        db: Database session
+        current_user: Authenticated user
+        
+    Returns:
+        List of matching sessions with their results
+    """
+    # Build base query - get distinct sessions by job and created_at
+    query = db.query(
+        MatchHistory.job_posting_id,
+        MatchHistory.created_at,
+        func.count(MatchHistory.id).label('match_count'),
+        func.max(MatchHistory.similarity_score).label('top_score')
+    ).group_by(
+        MatchHistory.job_posting_id,
+        func.date(MatchHistory.created_at),
+        func.strftime('%H:%M', MatchHistory.created_at)  # Group by hour:minute for sessions
+    ).order_by(
+        MatchHistory.created_at.desc()
+    )
+    
+    # Filter by job if specified
+    if job_id:
+        job = db.query(JobPosting).filter(
+            JobPosting.external_job_id == job_id
+        ).first()
+        if job:
+            query = query.filter(MatchHistory.job_posting_id == job.id)
+    
+    # Get sessions
+    session_rows = query.limit(limit).all()
+    
+    sessions = []
+    for row in session_rows:
+        # Get job details
+        job = db.query(JobPosting).filter(JobPosting.id == row.job_posting_id).first()
+        if not job:
+            continue
+        
+        # Get matches for this session (same job, same time window)
+        matches_query = db.query(MatchHistory).filter(
+            MatchHistory.job_posting_id == row.job_posting_id,
+            func.date(MatchHistory.created_at) == func.date(row.created_at)
+        ).order_by(MatchHistory.rank_position).limit(20)
+        
+        match_entries = []
+        for match in matches_query.all():
+            # Get student external ID
+            student = db.query(StudentProfile).filter(
+                StudentProfile.id == match.student_profile_id
+            ).first()
+            
+            if student:
+                match_entries.append(MatchHistoryEntry(
+                    external_student_id=student.external_student_id,
+                    similarity_score=match.similarity_score,
+                    rank_position=match.rank_position or 0,
+                    match_explanation=match.match_explanation,
+                    created_at=match.created_at.isoformat()
+                ))
+        
+        sessions.append(MatchHistorySession(
+            session_id=f"{job.external_job_id}_{row.created_at.strftime('%Y%m%d_%H%M')}",
+            job_id=job.id,
+            external_job_id=job.external_job_id,
+            job_title=job.title or job.external_job_id,
+            created_at=row.created_at.isoformat(),
+            candidates_matched=row.match_count,
+            top_score=row.top_score or 0.0,
+            matches=match_entries
+        ))
+    
+    return MatchHistoryResponse(
+        sessions=sessions,
+        total_sessions=len(sessions)
+    )
 
 
 

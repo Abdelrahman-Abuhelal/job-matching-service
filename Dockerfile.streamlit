@@ -3,7 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install dependencies
-RUN pip install --no-cache-dir streamlit httpx
+RUN pip install --no-cache-dir streamlit httpx pandas openpyxl
 
 # Copy Streamlit app
 COPY streamlit_app/ /app/

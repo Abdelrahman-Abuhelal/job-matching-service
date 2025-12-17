@@ -30,6 +30,8 @@ structlog==23.1.0
 
 # Streamlit UI
 streamlit>=1.40.0
+pandas>=2.2.0
+openpyxl>=3.1.2
 
 # Testing
 pytest==7.4.4

@@ -24,3 +24,7 @@ python-multipart==0.0.6
 # Utilities
 python-dotenv==1.0.0
 structlog==23.1.0
+
+# Streamlit import helpers (CSV/Excel)
+pandas>=2.2.0
+openpyxl>=3.1.2

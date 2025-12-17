@@ -380,6 +380,38 @@ class JobsForStudentResponse(BaseModel):
     matches: List[JobMatch]
 
 
+# ============= Match History Schemas =============
+
+class MatchHistoryEntry(BaseModel):
+    """A single match history entry."""
+
+    external_student_id: str
+    similarity_score: float
+    rank_position: int
+    match_explanation: Optional[Dict[str, Any]] = None
+    created_at: str
+
+
+class MatchHistorySession(BaseModel):
+    """A matching session (grouped by timestamp)."""
+
+    session_id: str
+    job_id: UUID
+    external_job_id: str
+    job_title: str
+    created_at: str
+    candidates_matched: int
+    top_score: float
+    matches: List[MatchHistoryEntry] = []
+
+
+class MatchHistoryResponse(BaseModel):
+    """Response schema for match history."""
+
+    sessions: List[MatchHistorySession]
+    total_sessions: int
+
+
 # ============= Health Check Schema =============
 
 class HealthCheckResponse(BaseModel):
