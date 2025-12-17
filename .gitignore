@@ -57,5 +57,10 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 
+# Tokens and secrets
+JWT_TOKEN.txt
+*.token
+*_TOKEN.txt
+
 
 
