@@ -100,6 +100,31 @@ HR runs matching ──► Vector similarity search ──► Business rule rank
                      Ranked results with explanations ◄────┘
 ```
 
+### Screenshots
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/1.png" alt="Job Selection & Ranking Configuration"/>
+      <p align="center"><strong>Job Selection & Ranking Presets</strong><br/>Choose a job posting and configure how candidates are ranked with preset strategies (Balanced, Skills-first, Potential-first) or custom weights.</p>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/2.png" alt="Matching Results Overview"/>
+      <p align="center"><strong>Match Execution & Results</strong><br/>Run matching with one click. See how many candidates were evaluated and returned above your threshold.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/3.png" alt="AI-Powered Match Insights"/>
+      <p align="center"><strong>AI-Powered Match Insights</strong><br/>Each candidate shows <em>why</em> they're recommended with AI-generated explanations, skill breakdowns (✅ matched, ❌ missing, ➕ bonus), and transparent score calculations.</p>
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/4.png" alt="Match History"/>
+      <p align="center"><strong>Match History & Audit Trail</strong><br/>Revisit past matching sessions. Filter by job, see top scores, and review ranked candidates for compliance and analytics.</p>
+    </td>
+  </tr>
+</table>
+
 ---
 
 ## Architecture & Technical Design
