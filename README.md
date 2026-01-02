@@ -249,10 +249,13 @@ Each result shows:
 ## Quick Start
 
 ### Prerequisites
-- Docker and Docker Compose
 - Google Gemini API key ([free at Google AI Studio](https://aistudio.google.com/))
+- **Option A (Docker):** Docker and Docker Compose
+- **Option B (Local):** Python 3.11+ and Git
 
-### 1. Clone and Configure
+### Option A: Docker (Recommended)
+
+#### 1. Clone and Configure
 
 ```bash
 git clone https://github.com/yourusername/talentmatch-ai.git
@@ -262,13 +265,13 @@ cp .env.example .env
 # Edit .env and add: GEMINI_API_KEY=your-key-here
 ```
 
-### 2. Start Services
+#### 2. Start Services
 
 ```bash
 docker-compose up --build
 ```
 
-### 3. Initialize and Seed
+#### 3. Initialize and Seed
 
 ```bash
 docker-compose exec fastapi python scripts/init_db.py
@@ -276,7 +279,58 @@ docker-compose exec fastapi python scripts/seed_database.py
 docker-compose exec fastapi python scripts/generate_test_token.py
 ```
 
-### 4. Access the Application
+### Option B: Local Development
+
+#### 1. Setup Environment
+
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# Windows:
+venv\Scripts\activate
+# Mac/Linux:
+# source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+#### 2. Configure
+
+```bash
+cp .env.example .env
+# Edit .env and add:
+# GEMINI_API_KEY=your-key-here
+# QDRANT_HOST=local  <-- Important for local use
+```
+
+#### 3. Initialize Database
+
+```bash
+# Initialize tables
+python scripts/init_db.py
+
+# Load sample data
+python scripts/seed_database.py
+```
+
+#### 4. Run Services
+
+You will need two terminal windows:
+
+**Terminal 1 (Backend API):**
+```bash
+uvicorn app.main:app --reload
+```
+
+**Terminal 2 (Frontend UI):**
+```bash
+streamlit run streamlit_app/app.py
+```
+
+### Access the Application
 
 - **Web UI:** http://localhost:8501
 - **API Docs:** http://localhost:8000/docs

@@ -37,12 +37,17 @@ class QdrantService:
     def get_client(self) -> QdrantClient:
         """Get or create Qdrant client."""
         if self._client is None:
-            self._client = QdrantClient(
-                host=settings.QDRANT_HOST,
-                port=settings.QDRANT_PORT,
-                api_key=settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None,
-                timeout=30.0
-            )
+            if settings.QDRANT_HOST == "local":
+                self._client = QdrantClient(path="./qdrant_storage")
+            elif settings.QDRANT_HOST == ":memory:":
+                self._client = QdrantClient(":memory:")
+            else:
+                self._client = QdrantClient(
+                    host=settings.QDRANT_HOST,
+                    port=settings.QDRANT_PORT,
+                    api_key=settings.QDRANT_API_KEY if settings.QDRANT_API_KEY else None,
+                    timeout=30.0
+                )
         return self._client
     
     def close(self):
